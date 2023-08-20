@@ -1,10 +1,14 @@
 import scipy as sci
 from scipy import constants
+
 import numpy as np
 import scipy.integrate
 
+from tkinter import Tk
+
 import matplotlib.pyplot as plt
 from matplotlib import animation
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 # Non-dimensionality constants
 m_nd = 1.989e+30  # kg #mass of the sun
@@ -23,8 +27,8 @@ m2 = 0.907
 m3 = 1.425
 
 # Define initial position vectors
-r1_init = [-0.5, 1, 0]  # m
-r2_init = [0.5, 0, 0.5]
+r1_init = [-0.5, 1, 1]  # m
+r2_init = [0.5, 0.2, 0.5]
 r3_init = [0.2, 1, 1.5]  # m
 r1_init = np.array(r1_init, dtype="float64")
 r2_init = np.array(r2_init, dtype="float64")
@@ -54,9 +58,9 @@ def two_body_function(pos_and_vel, time_const, gravity_const, m1, m2, m3):
     dr1_by_dt = K2 * v1
     dr2_by_dt = K2 * v2
     dr3_by_dt = K2 * v3
-    dv1_by_dt = K1*m2*(r2-r1)/r12**3+K1*m3*(r3-r1)/r13**3
-    dv2_by_dt = K1*m1*(r1-r2)/r12**3+K1*m3*(r3-r2)/r23**3
-    dv3_by_dt = K1*m1*(r1-r3)/r13**3+K1*m2*(r2-r3)/r23**3
+    dv1_by_dt = K1 * m2 * (r2 - r1) / r12 ** 3 + K1 * m3 * (r3 - r1) / r13 ** 3
+    dv2_by_dt = K1 * m1 * (r1 - r2) / r12 ** 3 + K1 * m3 * (r3 - r2) / r23 ** 3
+    dv3_by_dt = K1 * m1 * (r1 - r3) / r13 ** 3 + K1 * m2 * (r2 - r3) / r23 ** 3
 
     r_derivatives = np.concatenate((dr1_by_dt, dr2_by_dt))
     r_all_derivatives = np.concatenate((r_derivatives, dr3_by_dt))
@@ -67,8 +71,8 @@ def two_body_function(pos_and_vel, time_const, gravity_const, m1, m2, m3):
 
 
 init_params = np.array([r1_init, r2_init, r3_init, v1_init, v2_init, v3_init])  # create array of initial params
-init_params = init_params.flatten()  # flatten array to make it 1D
-time_span = np.linspace(0, 20, 500)  # 8 orbital periods and 500 points
+init_params = init_params.flatten()
+time_span = np.linspace(0, 10, 1000)  # 10 orbital periods and 1000 points
 
 three_body_sim = sci.integrate.odeint(two_body_function, init_params, time_span, args=(G, m1, m2, m3))
 
@@ -76,15 +80,17 @@ r1_sol = three_body_sim[:, :3]
 r2_sol = three_body_sim[:, 3:6]
 r3_sol = three_body_sim[:, 6:9]
 
-fig = plt.figure(figsize=(8, 8))
+fig = plt.figure(figsize=(6, 6))
 ax = fig.add_subplot(111, projection='3d')
+ax.axis("off")
+ax.set_facecolor('black')
 
 # Create new arrays for animation
-r1_anim = r1_sol[::1, :].copy()
-r2_anim = r2_sol[::1, :].copy()
-r3_anim = r3_sol[::1, :].copy()
+r1_anim = r1_sol[::4, :].copy()
+r2_anim = r2_sol[::4, :].copy()
+r3_anim = r3_sol[::4, :].copy()
 
-# Set initial marker for planets, that is, blue and red circles at the initial positions
+# Set initial marker for planets
 h1 = [ax.scatter(r1_anim[0, 0], r1_anim[0, 1], r1_anim[0, 2], color='deepskyblue', marker="o", s=80,
                  label="Star A")]
 h2 = [ax.scatter(r2_anim[0, 0], r2_anim[0, 1], r2_anim[0, 2], color='r', marker="o", s=80,
@@ -96,10 +102,8 @@ ax.set_xlabel("x", fontsize=14)
 ax.set_ylabel("y", fontsize=14)
 ax.set_zlabel("z", fontsize=14)
 ax.set_title("Visualization of Orbits in a 3 Star System\n", fontsize=16)
-ax.legend(loc="upper left", fontsize=14)
-ax.set_xlim(-1, 3)
-ax.set_ylim(-1, 3)
-ax.set_zlim(-2, 2)
+ax.legend(loc="upper left", fontsize=12)
+
 
 def update(i, head1, head2, head3):
     # Remove old markers
@@ -107,18 +111,33 @@ def update(i, head1, head2, head3):
     h2[0].remove()
     h3[0].remove()
 
-    # Plotting the orbits (for every i, we plot from init pos to final pos)
+    # Plotting the orbits
     t1 = ax.plot(r1_anim[:i, 0], r1_anim[:i, 1], r1_anim[:i, 2], color='deepskyblue')
     t2 = ax.plot(r2_anim[:i, 0], r2_anim[:i, 1], r2_anim[:i, 2], color='r')
     t3 = ax.plot(r3_anim[:i, 0], r3_anim[:i, 1], r3_anim[:i, 2], color='goldenrod')
 
     # Plotting the current markers
-    h1[0] = ax.scatter(r1_anim[i-1, 0], r1_anim[i-1, 1], r1_anim[i-1, 2], color='deepskyblue', marker="o", s=80)
-    h2[0] = ax.scatter(r2_anim[i-1, 0], r2_anim[i-1, 1], r2_anim[i-1, 2], color='r', marker="o", s=80)
-    h3[0] = ax.scatter(r3_anim[i-1, 0], r3_anim[i-1, 1], r3_anim[i-1, 2], color='goldenrod', marker="o", s=80)
+    h1[0] = ax.scatter(r1_anim[i - 1, 0], r1_anim[i - 1, 1], r1_anim[i - 1, 2], color='deepskyblue', marker="o", s=80)
+    h2[0] = ax.scatter(r2_anim[i - 1, 0], r2_anim[i - 1, 1], r2_anim[i - 1, 2], color='r', marker="o", s=80)
+    h3[0] = ax.scatter(r3_anim[i - 1, 0], r3_anim[i - 1, 1], r3_anim[i - 1, 2], color='goldenrod', marker="o", s=80)
 
     return t1, t2, t3, h1, h2, h3
 
 
-animate = animation.FuncAnimation(fig, update, frames=800, interval=10, repeat=False, blit=False, fargs=(h1, h2, h3))
-plt.show()
+def on_closing():
+    root.quit()
+    root.destroy()
+
+
+animate = animation.FuncAnimation(fig, update, frames=200, interval=10, repeat=True, blit=False, fargs=(h1, h2, h3))
+
+root = Tk()
+root.title("3-Body Simulation")
+
+canvas = FigureCanvasTkAgg(fig, master=root)
+canvas.draw()
+canvas.get_tk_widget().pack()
+
+root.protocol("WM_DELETE_WINDOW", on_closing)
+
+root.mainloop()
